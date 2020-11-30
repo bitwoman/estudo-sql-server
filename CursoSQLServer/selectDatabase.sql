@@ -1,15 +1,17 @@
 USE db_biblioteca
 
 
-/*--Traz tudo, mesmo sem correspondência:
+
+/*SELECT * FROM t_livro 
+WHERE id_autor NOT IN (1,2)
+
+--Traz tudo, mesmo sem correspondência:
 SELECT 
 		l.nome_livro,
 		l.data_pub,
 		a.nome_autor
 FROM t_livro AS l
 FULL JOIN t_autores AS a ON (a.id_autor = l.id_autor)
-
-
 
 SELECT 
 	l.nome_livro AS Titulo,
