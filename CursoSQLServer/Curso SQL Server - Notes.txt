@@ -1,0 +1,232 @@
+Criar Banco de Dados:
+
+/*SQL Server sempre dá preferência para aspas simples.*/
+
+CREATE DATABASE db_biblioteca
+ON PRIMARY (NAME = db_biblioteca, FILENAME='C:\CursoSQLServer\db_biblioteca.MDF', SIZE=6BM, MAXSIZE=15MB, FILEGROWTH=10%)
+
+/*Usa o banco de dados específico*/
+USE db_biblioteca;
+
+/*Comando interno do SQL Server que informa o tamanho, taxa de crescimento, e local do banco de dados.*/
+
+sp_helpdb db_biblioteca;
+
+/*Limitar faixa de valores ou tipos de dados a serem inseridos na coluna/tabela.*/
+
+CONSTRAINT CHECK (integer)
+
+/*A restrição default é usada para inserir um valor padrão em uma coluna, caso nenhum valor seja especificado.*/
+
+CONSTRAINT DEFAULT
+
+/*Criar uma tabela*/
+USE db_biblioteca;
+
+CREATE TABLE t_livro(
+	id_livro SMALLINT PRIMARY KEY IDENTITY(100,1),
+	nome_livro VARCHAR(50) NOT NULL,
+	ISBN VARCHAR(30) NOT NULL UNIQUE,
+	id_autor SMALLINT NOT NULL,
+	data_pub DATETIME NOT NULL,
+	preco_livro MONEY NOT NULL)
+
+CREATE TABLE t_autores(
+	id_autor SMALLINT PRIMARY KEY,
+	nome_autor VARCHAR(50),
+	sobrenome VARCHAR(60))
+
+CREATE TABLE tb_editoras(
+	id_editora SMALLINT PRIMARY KEY IDENTITY,
+	nome_editora VARCHAR(50) NOT NULL)
+
+/*Informa os índices, chaves e campos, atributos, tipos de atributos de uma tabela (stored procedures, comandos pré-programados)*/
+
+sp_help TABLE
+
+/*Permite que um número único seja gerado quando um novo registro é inserido em uma tabela. Valor default é 1.*/
+
+INCREMENT (IDENTITY)
+IDENTITY(100,2) --Inicia em 100 e incrementa de 2 em 2.
+
+/*Não é possível alterar uma coluna existente para configurar IDENTITY. Se necessário, crie uma nova tabela com IDENTITY e exclua a atual.*/
+
+/*ALTER TABLE - DROP */
+/*DROP COLUMN/DROP CONSTRAINT*/
+
+ADD id_autor SMALLINT NOT NULL CONSTRAINT fk_id_autor FOREIGN KEY(id_autor) REFERENCES t_autores
+
+ALTER TABLE t_livro ADD id_editora SMALLINT NOT NULL 
+CONSTRAINT fk_id_editora FOREIGN KEY (id_editora)
+REFERENCES t_editoras;
+
+ALTER TABLE clientes
+ADD PRIMARY KEY (id_cliente)
+
+**a coluna deve existir antes de ser transformada em chave primária, será pk posteriormente.
+
+
+/*CREATE INDEX: crie indíces em tabelas que recebam muitas consultas, tabelas indexadas levam mais tempo para serem atualizadas.*/
+
+CREATE INDEX nome_indice ON nome_tabela (nome_coluna)
+
+
+/*CREATE RULE: As regras são configurações que permitem especificamente como determinados parâmetros do banco de dados devem se comportar, como por exemplo, limitar faixas de valores em colunas, ou especificar valores inválidos para registros.*/
+
+CREATE RULE nomeRegra AS parâmetros
+CREATE RULE regraPreco AS @VALOR > 10.00
+EXECUTE sp_bindrule regraPreco, 't_livro.preco_livro' 
+
+--Realizando backup do Banco de Dados SQL Server:
+USE Teste
+GO
+
+--Pode ser gravado em qualquer tipo de "disk"
+BACKUP DATABASE Teste
+TO DISK = 'C:\CursoSQLServer\teste.bak'
+--WITH FORMAT; Em caso de mídia externa.
+GO
+
+/*Concatenação de Strings*/
+SELECT 
+	a.nome_autor + ' ' + a.sobrenome AS 'Nome Completo'
+FROM t_autores AS a
+
+/*Collation (Colação/Agrupamento)
+Trata-se da codificação dos caracteres em um padrão.
+Muitos sisemas de colação são baseados em ordem numérica ou alfabética. A colação usada pelos bancos de dados é configurada durante a instalação do sistema.
+
+collation-charts.org - site com cartas de agrupamento em vários alfabetos e idiomas.*/
+--Collation - Agrupamento de Caracteres ou Colação:
+--Função embutida que retorna as informações sobre as colações disponíveis no sistema:
+--5508
+SELECT * FROM fn_helpcollations()
+
+--Ver esquema atual de colação:
+--Latin1_General_CI_AS - Case Sensitive e com acentos.
+SELECT SERVERPROPERTY('Collation') AS 'Colação'
+
+--Alterar esquema de agrupamento:
+ALTER DATABASE Biblioteca2
+COLLATE Greek_CI_AI
+
+--Verificar esquema de agrupamento:
+SELECT DATABASEPROPERTYEX('Biblioteca', 'Collation')
+
+
+/*WITH TIES: Verifica se depois do último valor, há um mesmo valor, e ele retorna esse dado - deve haver a claúsula order by*/
+
+SELECT TOP(3) WITH TIES nome_time, pontos 
+FROM t_times 
+ORDER BY pontos DESC
+
+/*VIEWS: é uma tabela virtual baseada num conjunto de resultados (result sets) de uma consulta SQL. Mostra sempre os dados atualizados, pois o bando recria-os toda vez que a view é consultada.*/
+
+CREATE VIEW nome_view 
+AS SELECT colunas
+FROM tabela
+WHERE condições
+
+--ALTERANDO VIEW: Exemplo.
+ALTER VIEW viewAutores AS 
+	SELECT 
+		l.nome_livro AS 'Titulo',
+		(a.nome_autor + ' ' + a.sobrenome) AS 'Autor',
+		l.preco_livro AS 'Preco'
+	FROM t_livro AS l
+	INNER JOIN t_autores AS a ON (a.id_autor = l.id_autor)
+
+--Exibe a estrutura da própria view:
+exec sp_helptext [Nome da View]
+
+--Excluir uma view:
+DROP VIEW nome_view
+
+/*A subquery fornece uma resposta (tabela derivada) à consulta externa na forma de um valor escalar, 
+lista de valores, ou conjunto de dados, equivalentes a uma expressão, lista, ou 
+tabela para a consulta externa.*/
+
+exemplo:
+SELECT 
+	resultado.cliente AS cliente,
+	SUM(resultado.total) AS total
+FROM (
+	SELECT 
+		c.nome_cliente AS cliente,
+		(pr.preco_produto * co.quantidade) as total
+	FROM clientes AS c
+	INNER JOIN compras AS co ON (co.id_cliente = c.id_cliente
+	INNER JOIN produtos AS pr ON (pr.id_produto = co.id_produto) AS resultado
+GROUP BY resultado.cliente
+ORDER BY total
+
+/*CTE - Common Table Expression (subconsultas) / Expressão de Tabela Comum
+
+Variação sintática de uma subconsulta, similar a uma exibição (view). Pode ser acessada múltiplas vezes dentro da consulta principal, como se fosse uma exibição ou tabela.
+
+
+WITH consultaCTE (cliente, total) AS (
+	SELECT 
+		c.nome_cliente AS cliente,
+		(pr.preco_produto * co.quantidade) AS total
+	FROM clientes AS c
+	JOIN compras AS cp ON (cp.id_cliente = c.id_cliente) 
+	JOIN produtos AS pr ON (pr.id_produto = cp.id_produto)
+)
+
+SELECT cliente, SUM(total) AS valorTotal
+FROM consultaCTE
+GROUP BY cliente
+ORDER BY valorTotal
+
+/*Variáveis - Declaração e atribuição de valores no SQL Server:
+as variáveis podem ser declaradas no corpo de um batch ouu procedimento. Pode-se atribuir-lhes valores usando-se declarações SET ou SELECT. As variáveis são inicializadas por padrão com NULL.*/
+
+DECLARE @nome_var INT
+ex: 
+
+DECLARE 
+	@valor INT,
+	@texto VARCHAR(40),
+	@data_nasc DATE,
+	@nada MONEY
+
+*ps: usa-se a palavra DECLARE apenas uma vez para todas as variáveis.
+
+--Atribuindo valores com SET
+SET nome_var = valor_var
+
+ex: 
+SET @valor = 50
+SET @texto = 'Bóson'
+SET @data_nasc = GETDATE() --data e hora atual do sistema.
+
+--Atribuir valor com SELECT:
+SELECT nome_var = coluna FROM tabela
+WHERE condicao
+
+SELECT nome_var AS alias
+
+--Conversão de Tipos de Dados no SQL Server com Cast e Convert
+CAST(expressao AS novo_tipo_dado)
+
+ex:
+SELECT 'O preço do livro ' + nome_livro + ' é de R$ ' + CAST(preco_livro AS VARCHAR(6)) AS item
+FROM t_livro
+WHERE id_autor = 2
+
+/*CONVERT(novo_tipo, expressao, estilo) -> "estilo" é usado normalmente para 
+converter datas ou trabalhar com float/real.*/
+
+USE db_biblioteca
+GO
+
+SELECT 'O preço do livro ' + nome_livro + ' é de R$ ' + CONVERT(VARCHAR(6), preco_livro)
+FROM t_livro
+
+/*Trabalhando com datas - quando a expressão é um tipo de data ou hora, o estilo deve ser um valor de acordo com a tabela a seguir (simplificada)*/
+https://docs.microsoft.com/pt-br/sql/t-sql/functions/cast-and-convert-transact-sql?redirectedfrom=MSDN&view=sql-server-ver15
+
+
+
+
